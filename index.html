@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>BILLSTREAM</title>
+  <meta name="viewport" content="width=600, initial-scale=1">
+  <style>
+    body {
+      font-family: 'Fira Mono', 'Consolas', 'Menlo', monospace;
+      background: #fff;
+      color: #111;
+      margin: 0;
+      padding: 0;
+    }
+    h1 {
+      font-size: 2.5em;
+      margin: 1em 0 0.2em 0;
+      letter-spacing: 1px;
+      text-align: center;
+    }
+    .discography {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 2em;
+      margin: 2em 0 6em 0;
+    }
+    .album, .single {
+      background: #f7f7f7;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px #0001;
+      padding: 1.2em;
+      width: 260px;
+      min-width: 220px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .cover {
+      width: 200px;
+      height: 200px;
+      object-fit: cover;
+      border-radius: 8px;
+      margin-bottom: 1em;
+      background: #ddd;
+    }
+    .album-title, .single-title {
+      font-size: 1.2em;
+      font-weight: bold;
+      margin-bottom: 0.5em;
+      text-align: center;
+    }
+    .tracklist {
+      width: 100%;
+      margin-top: 0.5em;
+      border-top: 1px solid #ccc;
+      padding-top: 0.5em;
+    }
+    .tracklist-title {
+      font-size: 1em;
+      font-weight: bold;
+      margin-bottom: 0.3em;
+      letter-spacing: 1px;
+      color: #555;
+    }
+    .track {
+      display: flex;
+      align-items: center;
+      margin-bottom: 0.3em;
+      font-size: 1.1em;
+    }
+    .track-title {
+      flex: 1;
+      margin-left: 0.5em;
+    }
+    .play-btn {
+      width: 28px;
+      height: 28px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 0.5em;
+      transition: background 0.1s;
+    }
+    .play-btn:hover {
+      background: #e0e0e0;
+      border-radius: 50%;
+    }
+    .play-btn svg {
+      width: 20px;
+      height: 20px;
+      fill: #222;
+    }
+    /* Now Playing Bar */
+    .now-playing-bar {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      height: 70px;
+      background: #222;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      padding: 0 1.5em;
+      box-shadow: 0 -2px 12px #0002;
+      z-index: 100;
+      font-size: 1.1em;
+    }
+    .np-cover {
+      width: 48px;
+      height: 48px;
+      object-fit: cover;
+      border-radius: 6px;
+      margin-right: 1em;
+      background: #444;
+    }
+    .np-info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .np-title {
+      font-weight: bold;
+      font-size: 1.1em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .np-artist {
+      font-size: 0.95em;
+      color: #bbb;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .np-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+      margin-left: 1em;
+    }
+    .np-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0.3em;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.1s;
+    }
+    .np-btn:hover {
+      background: #444;
+    }
+    .np-btn svg {
+      width: 22px;
+      height: 22px;
+      fill: #fff;
+    }
+    .np-btn.active svg {
+      fill: #1db954;
+    }
+    .np-progress {
+      flex: 2;
+      margin: 0 1em;
+      height: 4px;
+      background: #444;
+      border-radius: 2px;
+      cursor: pointer;
+      position: relative;
+    }
+    .np-progress-bar {
+      height: 100%;
+      background: #1db954;
+      border-radius: 2px;
+      width: 0%;
+      position: absolute;
+      left: 0; top: 0;
+    }
+    @media (max-width: 800px) {
+      .discography { flex-direction: column; align-items: center; }
+      .album, .single { width: 95vw; }
+    }
+  </style>
+</head>
+<body>
+  <h1>BILLSTREAM</h1>
+  <div class="discography" id="discography"></div>
+  <div class="now-playing-bar" id="nowPlayingBar" style="display:none;">
+    <img class="np-cover" id="npCover" src="" alt="cover">
+    <div class="np-info">
+      <div class="np-title" id="npTitle"></div>
+      <div class="np-artist" id="npArtist"></div>
+    </div>
+    <button class="np-btn" id="npPrev" title="Previous">
+      <svg viewBox="0 0 24 24"><polygon points="16,18 8,12 16,6"/></svg>
+    </button>
+    <button class="np-btn" id="npPlayPause" title="Play/Pause">
+      <svg id="npPlayIcon" viewBox="0 0 24 24"><polygon points="8,5 19,12 8,19"/></svg>
+      <svg id="npPauseIcon" viewBox="0 0 24 24" style="display:none;"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>
+    </button>
+    <button class="np-btn" id="npNext" title="Next">
+      <svg viewBox="0 0 24 24"><polygon points="8,6 16,12 8,18"/></svg>
+    </button>
+    <button class="np-btn" id="npLoop" title="Loop">
+      <svg viewBox="0 0 24 24"><path d="M17 1l4 4-4 4M21 5H7a4 4 0 0 0 0 8h1"/><path d="M7 23l-4-4 4-4M3 19h14a4 4 0 0 0 0-8h-1"/></svg>
+    </button>
+    <button class="np-btn" id="npShuffle" title="Shuffle">
+      <svg viewBox="0 0 24 24"><path d="M16 3h5v5"/><path d="M4 20l16-16"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M3 4l6 6"/></svg>
+    </button>
+    <div class="np-progress" id="npProgress">
+      <div class="np-progress-bar" id="npProgressBar"></div>
+    </div>
+    <audio id="audio" preload="auto"></audio>
+  </div>
+  <script>
+    // --- EDIT THIS SECTION TO ADD YOUR MUSIC ---
+    // All files should be in the same folder as this HTML file.
+    // Example: cover: "album1.jpg", src: "track1.mp3"
+    const discography = [
+      {
+        type: "album",
+        title: "RETURN OF THE BILL",
+        artist: "Bill Loosensons",
+        cover: "return of the bill cover.png",
+        releaseDate: "May 2, 2025",
+        tracks: [
+          { title: "Sigma", src: "Sigma.mp3", duration: "2:42" },
+          { title: "The Moon", src: "The Moon.mp3", duration: "2:39" },
+          { title: "Lost in the Sauce", src: "Lost in the Sauce.mp3", duration: "2:42" },
+          { title: "GOON", src: "GOON.mp3", duration: "2:06" },
+          { title: "Easter Easter Easter", src: "Easter Easter Easter.mp3", duration: "1:57" },
+          { title: "Morgue", src: "Morgue.mp3", duration: "2:00" },
+          { title: "K-Mart", src: "K-Mart.mp3", duration: "1:20" },
+          { title: "Fun Festival (feat. Uncle Sam 'Moe' Lester)", src: "Fun Festival (feat. Uncle Sam “Moe” Lester).mp3", duration: "1:32" },
+          { title: "THE FATASS RAT AT THE CORNER STORE", src: "THE FATASS RAT AT THE CORNER STORE.mp3", duration: "2:04" },
+          { title: "Boner Pills", src: "Boner Pills.mp3", duration: "1:47" },
+          { title: "Billville (feat. Tangloft Sastii)", src: "Billville (feat. Tangloft Sastii).mp3", duration: "1:53" },
+          { title: "SHAMROCK", src: "SHAMROCK.mp3", duration: "2:51" },
+          { title: "Franklin Roosevelt", src: "Franklin Roosevelt.mp3", duration: "1:54" },
+          { title: "DayQuil (Refined Edition)", src: "DayQuil (Refined Edition).mp3", duration: "1:43" },
+          { title: "Crazy Dave", src: "Crazy Dave.mp3", duration: "3:08" },
+          { title: "JULIUS CAESAR (Extended)", src: "JULIUS CAESAR (Extended).mp3", duration: "3:27" },
+          { title: "California Boars", src: "California Boars.mp3", duration: "2:58" }
+        ]
+      },
+      {
+        type: "single",
+        title: "THE FATASS RAT AT THE CORNER STORE",
+        artist: "Bill Loosensons",
+        cover: "song.png",
+        src: "THE FATASS RAT AT THE CORNER STORE.mp3",
+        releaseDate: "April 25, 2025",
+        duration: "2:04"
+      },
+      {
+        type: "single",
+        title: "7-11",
+        artist: "Bill Loosensons",
+        cover: "7-11 COVER.png",
+        src: "SEVEN ELEVEN REWORK.mp3",
+        releaseDate: "April 17, 2025",
+        duration: "2:26"
+      },
+      {
+        type: "single",
+        title: "SHAMROCK",
+        artist: "Bill Loosensons",
+        cover: "shamrockcover.jpg",
+        src: "SHAMROCK.mp3",
+        releaseDate: "April 16, 2025",
+        duration: "2:51"
+      },
+      {
+        type: "single",
+        title: "JULIUS CAESAR",
+        artist: "Bill Loosensons",
+        cover: "juliuscaesar.jpg",
+        src: "julius caesar og.mp3",
+        releaseDate: "April 15, 2025",
+        duration: "2:01"
+      },
+      {
+        type: "single",
+        title: "DayQuil",
+        artist: "Bill Loosensons",
+        cover: "dayquil.jpg",
+        src: "dayquil og.mp3",
+        releaseDate: "April 14, 2025",
+        duration: "1:40"
+      },
+      {
+        type: "single",
+        title: "K-Mart",
+        artist: "Bill Loosensons",
+        cover: "k mart cover.png",
+        src: "K-Mart.mp3",
+        releaseDate: "March 26, 2025",
+        duration: "1:20"
+      },
+      {
+        type: "single",
+        title: "The Moon",
+        artist: "Bill Loosensons",
+        cover: "themooncover.png",
+        src: "The Moon.mp3",
+        releaseDate: "March 24, 2025",
+        duration: "2:39"
+      },
+      {
+        type: "album",
+        title: "DINGLEBERRY USA",
+        artist: "Bill Loosensons",
+        cover: "cover.png",
+        releaseDate: "December 12, 2024",
+        tracks: [
+          { title: "WELCOME TO THE LAND OF THE DINGLEBERRIES", src: "Bill Loosensons - DINGLEBERRY USA - 01 WELCOME TO THE LAND OF THE DINGLEBERRIES.mp3", duration: "3:26" },
+          { title: "BERRIES IN PARIS", src: "Bill Loosensons - DINGLEBERRY USA - 02 BERRIES IN PARIS.mp3", duration: "2:24" },
+          { title: "DINGLEBERRY CITY", src: "Bill Loosensons - DINGLEBERRY USA - 03 DINGLEBERRY CITY.mp3", duration: "2:20" },
+          { title: "THE ARMY OF DINGLEBERRIES ABSOLUTELY OBLITERATES A WHOLE METROPOLITAN AREA, SO IOWA IS ALL JUST FARMLAND NOW (Interlude)", src: "Bill Loosensons - DINGLEBERRY USA - 04 THE ARMY OF DINGLEBERRIES ABSOLUTELY OBLITERATES A WHOLE METROPOLITAN AREA, SO IOWA IS ALL JUST FARMLAND NOW (Interlude).mp3", duration: "1:02" },
+          { title: "DINGLEBERRY USA", src: "Bill Loosensons - DINGLEBERRY USA - 05 DINGLEBERRY USA.mp3", duration: "3:12" },
+          { title: "DINGLEGERALD", src: "Bill Loosensons - DINGLEBERRY USA - 06 DINGLEGERALD.mp3", duration: "2:53" },
+          { title: "DINGLE DONGLE DONKEY", src: "Bill Loosensons - DINGLEBERRY USA - 07 DINGLE DONGLE DONKEY.mp3", duration: "2:57" },
+          { title: "DINGUS", src: "Bill Loosensons - DINGLEBERRY USA - 08 DINGUS.mp3", duration: "2:58" },
+          { title: "THE WILLIAM LOOSENSONS EXTRAVAGANZA OF 2024", src: "Bill Loosensons - DINGLEBERRY USA - 09 THE WILLIAM LOOSENSONS EXTRAVAGANZA OF 2024.mp3", duration: "8:21" },
+          { title: "DINGLE BELLS! (feat. Joe Biden)", src: "DINGLE BELLS COMPLETE.mp3", duration: "3:03" }
+        ]
+      },
+      {
+        type: "single",
+        title: "WELCOME TO THE LAND OF THE DINGLEBERRIES",
+        artist: "Bill Loosensons",
+        cover: "welcometothelandofthedingleberriescover.png",
+        src: "Bill Loosensons - DINGLEBERRY USA - 01 WELCOME TO THE LAND OF THE DINGLEBERRIES.mp3",
+        releaseDate: "December 5, 2024",
+        duration: "3:26"
+      },
+      {
+        type: "single",
+        title: "DINGLEBERRY CITY",
+        artist: "Bill Loosensons",
+        cover: "dingleberry city Cover.png",
+        src: "Bill Loosensons - DINGLEBERRY USA - 03 DINGLEBERRY CITY.mp3",
+        releaseDate: "December 4, 2024",
+        duration: "2:20"
+      }
+      // Add more albums or singles here!
+    ];
+    // --- END OF EDIT SECTION ---
+
+    // --- RENDER DISCOSGRAPHY ---
+    const discogDiv = document.getElementById('discography');
+    let trackList = []; // Flat list of all tracks for shuffle all
+    let trackMap = [];  // {albumIndex, trackIndex, ...}
+
+    function renderDiscography() {
+      discogDiv.innerHTML = '';
+      trackList = [];
+      trackMap = [];
+      discography.forEach((item, i) => {
+        if (item.type === "album") {
+          const albumDiv = document.createElement('div');
+          albumDiv.className = 'album';
+          const numTracks = item.tracks.length;
+          const albumId = `album-tracks-${i}`;
+          albumDiv.innerHTML = `
+            <img class="cover" src="${item.cover}" alt="cover">
+            <div class="album-title">${item.title}</div>
+            <div class="release-date" style="font-size:0.95em;color:#888;margin-bottom:0.5em;">Released: ${item.releaseDate || ''}</div>
+            <button class="album-toggle" data-album="${i}" style="margin-bottom:0.5em;display:flex;align-items:center;gap:0.5em;font-size:1em;cursor:pointer;background:#eaeaea;border:none;padding:0.4em 1em;border-radius:6px;">
+              <span>Show ${numTracks} track${numTracks > 1 ? 's' : ''}</span>
+              <span class="chevron" style="transition:transform 0.2s;display:inline-block;">▼</span>
+            </button>
+            <div class="tracklist" id="${albumId}" style="display:none;">
+              <div class="tracklist-title">TRACKLIST</div>
+              <div class="album-tracks"></div>
+            </div>
+          `;
+          discogDiv.appendChild(albumDiv);
+          const tracksDiv = albumDiv.querySelector('.album-tracks');
+          item.tracks.forEach((track, j) => {
+            const trackDiv = document.createElement('div');
+            trackDiv.className = 'track';
+            trackDiv.innerHTML = `
+              <button class="play-btn" title="Play">
+                <svg viewBox="0 0 24 24"><polygon points="8,5 19,12 8,19"/></svg>
+              </button>
+              <span class="track-title">${track.title}</span>
+              <span class="track-duration" style="margin-left:auto;font-size:0.95em;color:#888;">${track.duration || ''}</span>
+            `;
+            trackDiv.querySelector('.play-btn').onclick = () => playTrack(i, j);
+            tracksDiv.appendChild(trackDiv);
+            // For global tracklist
+            trackList.push({
+              albumIndex: i,
+              trackIndex: j,
+              title: track.title,
+              src: track.src,
+              cover: item.cover,
+              album: item.title,
+              artist: item.artist,
+              duration: track.duration,
+              releaseDate: item.releaseDate
+            });
+            trackMap.push({albumIndex: i, trackIndex: j});
+          });
+          // Toggle logic
+          const toggleBtn = albumDiv.querySelector('.album-toggle');
+          const tracklistDiv = albumDiv.querySelector('.tracklist');
+          const chevron = albumDiv.querySelector('.chevron');
+          toggleBtn.onclick = () => {
+            const isOpen = tracklistDiv.style.display === '' || tracklistDiv.style.display === 'block';
+            if (isOpen) {
+              tracklistDiv.style.display = 'none';
+              chevron.style.transform = 'rotate(0deg)';
+              toggleBtn.querySelector('span').textContent = `Show ${numTracks} track${numTracks > 1 ? 's' : ''}`;
+            } else {
+              tracklistDiv.style.display = 'block';
+              chevron.style.transform = 'rotate(180deg)';
+              toggleBtn.querySelector('span').textContent = `Hide ${numTracks} track${numTracks > 1 ? 's' : ''}`;
+            }
+          };
+        } else if (item.type === "single") {
+          const singleDiv = document.createElement('div');
+          singleDiv.className = 'single';
+          singleDiv.innerHTML = `
+            <img class="cover" src="${item.cover}" alt="cover">
+            <div class="single-title">${item.title}</div>
+            <div class="release-date" style="font-size:0.95em;color:#888;margin-bottom:0.5em;">Released: ${item.releaseDate || ''}</div>
+            <div class="tracklist">
+              <div class="tracklist-title">SINGLE</div>
+              <div class="track">
+                <button class="play-btn" title="Play">
+                  <svg viewBox="0 0 24 24"><polygon points="8,5 19,12 8,19"/></svg>
+                </button>
+                <span class="track-title">${item.title}</span>
+                <span class="track-duration" style="margin-left:auto;font-size:0.95em;color:#888;">${item.duration || ''}</span>
+              </div>
+            </div>
+          `;
+          singleDiv.querySelector('.play-btn').onclick = () => playSingle(i);
+          discogDiv.appendChild(singleDiv);
+          // For global tracklist
+          trackList.push({
+            albumIndex: i,
+            trackIndex: null,
+            title: item.title,
+            src: item.src,
+            cover: item.cover,
+            album: item.title,
+            artist: item.artist,
+            duration: item.duration,
+            releaseDate: item.releaseDate
+          });
+          trackMap.push({albumIndex: i, trackIndex: null});
+        }
+      });
+    }
+    renderDiscography();
+
+    // --- PLAYER LOGIC ---
+    let current = {albumIndex: 0, trackIndex: 0, globalIndex: 0};
+    let playing = false;
+    let loopMode = 0; // 0: no loop, 1: loop track, 2: loop album
+    let shuffleMode = 0; // 0: no shuffle, 1: shuffle album, 2: shuffle all
+    let shuffleOrder = [];
+    let shufflePointer = 0;
+
+    const audio = document.getElementById('audio');
+    const nowPlayingBar = document.getElementById('nowPlayingBar');
+    const npCover = document.getElementById('npCover');
+    const npTitle = document.getElementById('npTitle');
+    const npArtist = document.getElementById('npArtist');
+    const npPlayPause = document.getElementById('npPlayPause');
+    const npPlayIcon = document.getElementById('npPlayIcon');
+    const npPauseIcon = document.getElementById('npPauseIcon');
+    const npPrev = document.getElementById('npPrev');
+    const npNext = document.getElementById('npNext');
+    const npLoop = document.getElementById('npLoop');
+    const npShuffle = document.getElementById('npShuffle');
+    const npProgress = document.getElementById('npProgress');
+    const npProgressBar = document.getElementById('npProgressBar');
+
+    function playTrack(albumIndex, trackIndex) {
+      const album = discography[albumIndex];
+      const track = album.tracks[trackIndex];
+      current = {
+        albumIndex,
+        trackIndex,
+        globalIndex: trackMap.findIndex(t => t.albumIndex === albumIndex && t.trackIndex === trackIndex)
+      };
+      setAudio(track.src, album.cover, track.title, album.title, album.artist, track.duration, album.releaseDate);
+      playing = true;
+      audio.play();
+      showNowPlaying();
+      updateNowPlayingBar();
+      setShuffleOrder();
+    }
+    function playSingle(singleIndex) {
+      const single = discography[singleIndex];
+      current = {
+        albumIndex: singleIndex,
+        trackIndex: null,
+        globalIndex: trackMap.findIndex(t => t.albumIndex === singleIndex && t.trackIndex === null)
+      };
+      setAudio(single.src, single.cover, single.title, single.title, single.artist, single.duration, single.releaseDate);
+      playing = true;
+      audio.play();
+      showNowPlaying();
+      updateNowPlayingBar();
+      setShuffleOrder();
+    }
+    function setAudio(src, cover, title, album, artist, duration, releaseDate) {
+      audio.src = src;
+      npCover.src = cover;
+      npTitle.textContent = title;
+      npArtist.textContent = album + (artist ? " · " + artist : "");
+      // Add duration and release date to now playing bar
+      let npMeta = document.getElementById('npMeta');
+      if (!npMeta) {
+        npMeta = document.createElement('div');
+        npMeta.id = 'npMeta';
+        npMeta.style.fontSize = '0.95em';
+        npMeta.style.color = '#bbb';
+        npMeta.style.marginTop = '0.2em';
+        npArtist.parentNode.appendChild(npMeta);
+      }
+      npMeta.textContent = (duration ? `Duration: ${duration}` : '') + (releaseDate ? ` · Released: ${releaseDate}` : '');
+    }
+    function showNowPlaying() {
+      nowPlayingBar.style.display = 'flex';
+    }
+    function updateNowPlayingBar() {
+      if (playing) {
+        npPlayIcon.style.display = 'none';
+        npPauseIcon.style.display = '';
+      } else {
+        npPlayIcon.style.display = '';
+        npPauseIcon.style.display = 'none';
+      }
+      // Loop/Shuffle button states
+      // Update loop icon
+      let loopSVGs = [
+        `<svg viewBox="0 0 24 24"><path d="M17 1l4 4-4 4M21 5H7a4 4 0 0 0 0 8h1"/><path d="M7 23l-4-4 4-4M3 19h14a4 4 0 0 0 0-8h-1"/></svg>`, // off
+        `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1db954" stroke-width="2"/><text x="12" y="16" text-anchor="middle" font-size="12" fill="#1db954">1</text></svg>`, // loop one
+        `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#1db954" stroke-width="2"/><text x="12" y="16" text-anchor="middle" font-size="12" fill="#1db954">A</text></svg>` // loop album
+      ];
+      npLoop.innerHTML = loopSVGs[loopMode];
+      npLoop.classList.toggle('active', loopMode > 0);
+      // Update shuffle icon
+      let shuffleSVGs = [
+        `<svg viewBox="0 0 24 24"><path d="M16 3h5v5"/><path d="M4 20l16-16"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M3 4l6 6"/></svg>`, // off
+        `<svg viewBox="0 0 24 24"><path d="M4 20l16-16" stroke="#1db954" stroke-width="2" fill="none"/><text x="12" y="16" text-anchor="middle" font-size="12" fill="#1db954">A</text></svg>`, // shuffle album
+        `<svg viewBox="0 0 24 24"><path d="M4 20l16-16" stroke="#1db954" stroke-width="2" fill="none"/><text x="12" y="16" text-anchor="middle" font-size="12" fill="#1db954">ALL</text></svg>` // shuffle all
+      ];
+      npShuffle.innerHTML = shuffleSVGs[shuffleMode];
+      npShuffle.classList.toggle('active', shuffleMode > 0);
+    }
+    npPlayPause.onclick = () => {
+      if (!audio.src) return;
+      if (playing) {
+        audio.pause();
+        playing = false;
+      } else {
+        audio.play();
+        playing = true;
+      }
+      updateNowPlayingBar();
+    };
+    npPrev.onclick = () => {
+      prevTrack();
+    };
+    npNext.onclick = () => {
+      nextTrack();
+    };
+    npLoop.onclick = () => {
+      loopMode = (loopMode + 1) % 3;
+      // 0: no loop, 1: loop track, 2: loop album
+      updateNowPlayingBar();
+    };
+    npShuffle.onclick = () => {
+      shuffleMode = (shuffleMode + 1) % 3;
+      setShuffleOrder();
+      updateNowPlayingBar();
+    };
+    function setShuffleOrder() {
+      if (shuffleMode === 1) {
+        // Shuffle album
+        const album = discography[current.albumIndex];
+        if (album.type === "album") {
+          shuffleOrder = Array.from(album.tracks.keys());
+          shuffleOrder = shuffleArray(shuffleOrder);
+          shufflePointer = shuffleOrder.indexOf(current.trackIndex);
+        } else {
+          shuffleOrder = [0];
+          shufflePointer = 0;
+        }
+      } else if (shuffleMode === 2) {
+        // Shuffle all
+        shuffleOrder = Array.from(trackList.keys());
+        shuffleOrder = shuffleArray(shuffleOrder);
+        shufflePointer = shuffleOrder.indexOf(current.globalIndex);
+      } else {
+        shuffleOrder = [];
+        shufflePointer = 0;
+      }
+    }
+    function shuffleArray(arr) {
+      let a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+    function nextTrack() {
+      if (shuffleMode === 1) {
+        // Shuffle album
+        const album = discography[current.albumIndex];
+        if (album.type !== "album") return;
+        shufflePointer = (shufflePointer + 1) % album.tracks.length;
+        playTrack(current.albumIndex, shuffleOrder[shufflePointer]);
+      } else if (shuffleMode === 2) {
+        // Shuffle all
+        shufflePointer = (shufflePointer + 1) % trackList.length;
+        const t = trackMap[shuffleOrder[shufflePointer]];
+        if (t.trackIndex === null) playSingle(t.albumIndex);
+        else playTrack(t.albumIndex, t.trackIndex);
+      } else {
+        // Normal order
+        if (current.trackIndex !== null) {
+          // Album
+          const album = discography[current.albumIndex];
+          if (album.type !== "album") return;
+          if (current.trackIndex + 1 < album.tracks.length) {
+            playTrack(current.albumIndex, current.trackIndex + 1);
+          } else {
+            // End of album
+            if (loopMode === 2) playTrack(current.albumIndex, 0);
+            else nextGlobal();
+          }
+        } else {
+          // Single
+          nextGlobal();
+        }
+      }
+    }
+    function prevTrack() {
+      if (shuffleMode === 1) {
+        // Shuffle album
+        const album = discography[current.albumIndex];
+        if (album.type !== "album") return;
+        shufflePointer = (shufflePointer - 1 + album.tracks.length) % album.tracks.length;
+        playTrack(current.albumIndex, shuffleOrder[shufflePointer]);
+      } else if (shuffleMode === 2) {
+        // Shuffle all
+        shufflePointer = (shufflePointer - 1 + trackList.length) % trackList.length;
+        const t = trackMap[shuffleOrder[shufflePointer]];
+        if (t.trackIndex === null) playSingle(t.albumIndex);
+        else playTrack(t.albumIndex, t.trackIndex);
+      } else {
+        // Normal order
+        if (current.trackIndex !== null) {
+          // Album
+          if (current.trackIndex > 0) {
+            playTrack(current.albumIndex, current.trackIndex - 1);
+          } else {
+            // Start of album
+            if (loopMode === 2) {
+              const album = discography[current.albumIndex];
+              playTrack(current.albumIndex, album.tracks.length - 1);
+            } else prevGlobal();
+          }
+        } else {
+          // Single
+          prevGlobal();
+        }
+      }
+    }
+    function nextGlobal() {
+      if (current.globalIndex + 1 < trackList.length) {
+        const t = trackMap[current.globalIndex + 1];
+        if (t.trackIndex === null) playSingle(t.albumIndex);
+        else playTrack(t.albumIndex, t.trackIndex);
+      } else if (loopMode === 1 || loopMode === 2) {
+        // Loop all
+        const t = trackMap[0];
+        if (t.trackIndex === null) playSingle(t.albumIndex);
+        else playTrack(t.albumIndex, t.trackIndex);
+      }
+    }
+    function prevGlobal() {
+      if (current.globalIndex > 0) {
+        const t = trackMap[current.globalIndex - 1];
+        if (t.trackIndex === null) playSingle(t.albumIndex);
+        else playTrack(t.albumIndex, t.trackIndex);
+      }
+    }
+    audio.onended = () => {
+      if (loopMode === 1) {
+        audio.currentTime = 0;
+        audio.play();
+      } else {
+        nextTrack();
+      }
+    };
+    audio.onplay = () => {
+      playing = true;
+      updateNowPlayingBar();
+    };
+    audio.onpause = () => {
+      playing = false;
+      updateNowPlayingBar();
+    };
+    // Progress bar
+    audio.ontimeupdate = () => {
+      if (!audio.duration) return;
+      npProgressBar.style.width = (audio.currentTime / audio.duration * 100) + "%";
+    };
+    npProgress.onclick = (e) => {
+      if (!audio.duration) return;
+      const rect = npProgress.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const pct = x / rect.width;
+      audio.currentTime = pct * audio.duration;
+    };
+
+    // Keyboard shortcuts (space: play/pause, left/right: prev/next)
+    document.addEventListener('keydown', e => {
+      if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+      if (e.code === 'Space') { e.preventDefault(); npPlayPause.click(); }
+      if (e.code === 'ArrowRight') { e.preventDefault(); npNext.click(); }
+      if (e.code === 'ArrowLeft') { e.preventDefault(); npPrev.click(); }
+    });
+  </script>
+</body>
+</html>
