@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>BILLSTREAM</title>
-  <meta name="viewport" content="width=600, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body {
       font-family: 'Fira Mono', 'Consolas', 'Menlo', monospace;
@@ -98,19 +98,20 @@
     .now-playing-bar {
       position: fixed;
       left: 0; right: 0; bottom: 0;
-      height: 70px;
+      min-height: 90px;
+      height: auto;
       background: #222;
       color: #fff;
       display: flex;
       align-items: center;
-      padding: 0 1.5em;
+      padding: 1.2em 2em;
       box-shadow: 0 -2px 12px #0002;
       z-index: 100;
       font-size: 1.1em;
     }
     .np-cover {
-      width: 48px;
-      height: 48px;
+      width: 64px;
+      height: 64px;
       object-fit: cover;
       border-radius: 6px;
       margin-right: 1em;
@@ -122,20 +123,40 @@
       display: flex;
       flex-direction: column;
       justify-content: center;
+      overflow: hidden;
+      min-height: 48px;
     }
-    .np-title {
+    .np-title, .np-artist {
       font-weight: bold;
       font-size: 1.1em;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      position: relative;
+      max-width: 100%;
+      display: block;
+      height: 1.4em;
+      line-height: 1.4em;
     }
     .np-artist {
       font-size: 0.95em;
       color: #bbb;
-      white-space: nowrap;
+      font-weight: normal;
+      margin-top: 0.2em;
+    }
+    .marquee {
+      width: 100%;
       overflow: hidden;
-      text-overflow: ellipsis;
+      position: relative;
+      display: block;
+      height: 1.4em;
+    }
+    .marquee-inner {
+      display: inline-block;
+      white-space: nowrap;
+      position: absolute;
+      left: 0;
+      will-change: transform;
     }
     .np-controls {
       display: flex;
@@ -208,28 +229,37 @@
         min-height: 56px;
       }
       .now-playing-bar {
-        height: 110px;
-        font-size: 1.35em;
-        padding: 0 0.7em;
+        min-height: 120px;
+        font-size: 1.15em;
+        padding: 1.2em 0.5em;
+        flex-wrap: wrap;
+        flex-direction: column;
+        align-items: flex-start;
       }
       .np-cover {
         width: 72px;
         height: 72px;
         margin-right: 0.7em;
+        margin-bottom: 0.5em;
       }
-      .np-btn {
-        padding: 0.7em;
+      .np-info {
+        width: 100%;
+        min-width: 0;
+        margin-bottom: 0.5em;
+        min-height: 56px;
       }
-      .np-btn svg {
-        width: 36px;
-        height: 36px;
+      .np-controls {
+        width: 100%;
+        margin-left: 0;
+        justify-content: flex-start;
+        gap: 0.7em;
       }
       .np-progress {
-        height: 8px;
-        margin: 0 0.5em;
+        width: 100%;
+        margin: 0.5em 0;
       }
       .np-title, .np-artist {
-        font-size: 1.1em;
+        font-size: 1.15em;
       }
       .album-toggle {
         font-size: 1.1em;
@@ -604,11 +634,55 @@
       updateNowPlayingBar();
       setShuffleOrder();
     }
+    function setMarquee(element, text, speed = 60) {
+      // Remove previous marquee if any
+      element.innerHTML = '';
+      const span = document.createElement('span');
+      span.className = 'marquee-inner';
+      span.textContent = text;
+      element.appendChild(span);
+      // Wait for DOM to render
+      setTimeout(() => {
+        const parentWidth = element.offsetWidth;
+        const textWidth = span.scrollWidth;
+        if (textWidth > parentWidth) {
+          // Animate back and forth
+          let pos = 0;
+          let dir = -1;
+          let maxScroll = textWidth - parentWidth;
+          let duration = (maxScroll / speed) * 1000;
+          function animate() {
+            span.style.transition = `transform ${duration}ms linear`;
+            span.style.transform = `translateX(${dir === -1 ? -maxScroll : 0}px)`;
+            setTimeout(() => {
+              dir *= -1;
+              animate();
+            }, duration + 1000);
+          }
+          animate();
+        } else {
+          span.style.transform = 'translateX(0)';
+        }
+      }, 100);
+    }
     function setAudio(src, cover, title, album, artist, duration, releaseDate) {
       audio.src = src;
       npCover.src = cover;
-      npTitle.textContent = title;
-      npArtist.textContent = album + (artist ? " · " + artist : "");
+      // Marquee logic for title
+      if (title.length > 22) {
+        npTitle.innerHTML = `<div class='marquee'></div>`;
+        setMarquee(npTitle.querySelector('.marquee'), title, 40); // slower
+      } else {
+        npTitle.textContent = title;
+      }
+      // Marquee logic for artist/album
+      let artistText = album + (artist ? " · " + artist : "");
+      if (artistText.length > 28) {
+        npArtist.innerHTML = `<div class='marquee'></div>`;
+        setMarquee(npArtist.querySelector('.marquee'), artistText, 40);
+      } else {
+        npArtist.textContent = artistText;
+      }
       // Add duration and release date to now playing bar
       let npMeta = document.getElementById('npMeta');
       if (!npMeta) {
