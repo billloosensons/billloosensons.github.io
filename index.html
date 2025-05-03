@@ -195,6 +195,14 @@
         width: 32px;
         height: 32px;
       }
+      .heart-btn {
+        width: 48px !important;
+        height: 48px !important;
+      }
+      .heart-svg {
+        width: 32px !important;
+        height: 32px !important;
+      }
       .track {
         font-size: 1.25em;
         min-height: 56px;
@@ -232,6 +240,9 @@
 </head>
 <body>
   <h1>BILLSTREAM</h1>
+  <div style="text-align:center;margin-bottom:1em;">
+    <button id="toggleFavorites" style="font-size:1.1em;padding:0.5em 1.2em;border-radius:8px;border:none;background:#eee;cursor:pointer;">Show Favorites Only</button>
+  </div>
   <div class="discography" id="discography"></div>
   <div class="now-playing-bar" id="nowPlayingBar" style="display:none;">
     <img class="np-cover" id="npCover" src="" alt="cover">
@@ -404,6 +415,9 @@
       discogDiv.innerHTML = '';
       trackList = [];
       trackMap = [];
+      // Get favorites from localStorage
+      const favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+      const showFavoritesOnly = window.showFavoritesOnly || false;
       discography.forEach((item, i) => {
         if (item.type === "album") {
           const albumDiv = document.createElement('div');
@@ -426,15 +440,32 @@
           discogDiv.appendChild(albumDiv);
           const tracksDiv = albumDiv.querySelector('.album-tracks');
           item.tracks.forEach((track, j) => {
+            // Unique ID for this track
+            const trackId = `album-${i}-track-${j}`;
+            // If filtering, skip non-favorites
+            if (showFavoritesOnly && !favorites.includes(trackId)) return;
             const trackDiv = document.createElement('div');
             trackDiv.className = 'track';
             trackDiv.innerHTML = `
+              <button class="heart-btn" title="Favorite" data-trackid="${trackId}" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;margin-right:0.3em;">
+                <svg viewBox="0 0 24 24" class="heart-svg" style="width:22px;height:22px;fill:${favorites.includes(trackId) ? '#e74c3c' : 'none'};stroke:#e74c3c;stroke-width:2;"><path d="M12 21s-6.7-5.6-9-8.6C-1.2 8.2 2.2 3.5 7 5.1c1.7.6 3 2.1 3 2.1s1.3-1.5 3-2.1c4.8-1.6 8.2 3.1 4 7.3-2.3 3-9 8.6-9 8.6z"/></svg>
+              </button>
               <button class="play-btn" title="Play">
                 <svg viewBox="0 0 24 24"><polygon points="8,5 19,12 8,19"/></svg>
               </button>
               <span class="track-title">${track.title}</span>
               <span class="track-duration" style="margin-left:auto;font-size:0.95em;color:#888;">${track.duration || ''}</span>
             `;
+            trackDiv.querySelector('.heart-btn').onclick = function() {
+              let favs = JSON.parse(localStorage.getItem('favorites') || '[]');
+              if (favs.includes(trackId)) {
+                favs = favs.filter(f => f !== trackId);
+              } else {
+                favs.push(trackId);
+              }
+              localStorage.setItem('favorites', JSON.stringify(favs));
+              renderDiscography();
+            };
             trackDiv.querySelector('.play-btn').onclick = () => playTrack(i, j);
             tracksDiv.appendChild(trackDiv);
             // For global tracklist
@@ -447,7 +478,8 @@
               album: item.title,
               artist: item.artist,
               duration: track.duration,
-              releaseDate: item.releaseDate
+              releaseDate: item.releaseDate,
+              trackId
             });
             trackMap.push({albumIndex: i, trackIndex: j});
           });
@@ -477,6 +509,9 @@
             <div class="tracklist">
               <div class="tracklist-title">SINGLE</div>
               <div class="track">
+                <button class="heart-btn" title="Favorite" data-trackid="single-${i}" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;margin-right:0.3em;">
+                  <svg viewBox="0 0 24 24" class="heart-svg" style="width:22px;height:22px;fill:${favorites.includes('single-'+i) ? '#e74c3c' : 'none'};stroke:#e74c3c;stroke-width:2;"><path d="M12 21s-6.7-5.6-9-8.6C-1.2 8.2 2.2 3.5 7 5.1c1.7.6 3 2.1 3 2.1s1.3-1.5 3-2.1c4.8-1.6 8.2 3.1 4 7.3-2.3 3-9 8.6-9 8.6z"/></svg>
+                </button>
                 <button class="play-btn" title="Play">
                   <svg viewBox="0 0 24 24"><polygon points="8,5 19,12 8,19"/></svg>
                 </button>
@@ -485,6 +520,17 @@
               </div>
             </div>
           `;
+          singleDiv.querySelector('.heart-btn').onclick = function() {
+            let favs = JSON.parse(localStorage.getItem('favorites') || '[]');
+            const trackId = 'single-' + i;
+            if (favs.includes(trackId)) {
+              favs = favs.filter(f => f !== trackId);
+            } else {
+              favs.push(trackId);
+            }
+            localStorage.setItem('favorites', JSON.stringify(favs));
+            renderDiscography();
+          };
           singleDiv.querySelector('.play-btn').onclick = () => playSingle(i);
           discogDiv.appendChild(singleDiv);
           // For global tracklist
@@ -497,7 +543,8 @@
             album: item.title,
             artist: item.artist,
             duration: item.duration,
-            releaseDate: item.releaseDate
+            releaseDate: item.releaseDate,
+            trackId: 'single-' + i
           });
           trackMap.push({albumIndex: i, trackIndex: null});
         }
@@ -779,6 +826,18 @@
       if (e.code === 'ArrowRight') { e.preventDefault(); npNext.click(); }
       if (e.code === 'ArrowLeft') { e.preventDefault(); npPrev.click(); }
     });
+
+    // Favorites toggle logic
+    const toggleFavoritesBtn = document.getElementById('toggleFavorites');
+    window.showFavoritesOnly = false;
+    toggleFavoritesBtn.onclick = function() {
+      window.showFavoritesOnly = !window.showFavoritesOnly;
+      toggleFavoritesBtn.textContent = window.showFavoritesOnly ? 'Show All Songs' : 'Show Favorites Only';
+      renderDiscography();
+    };
   </script>
+  <footer style="width:100vw;text-align:center;padding:2em 0 1em 0;color:#888;font-size:1em;letter-spacing:1px;">
+    © 2025 Bill Loosensons
+  </footer>
 </body>
 </html>
